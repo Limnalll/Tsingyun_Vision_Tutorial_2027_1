@@ -1,0 +1,61 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      # The student skeleton fails the suite BY DESIGN: unimplemented TODOs
+      # raise NotImplementedError.  So the run itself never fails the job;
+      # the grading step below decides.
+      - name: Run test suite
+        run: uv run pytest -q --tb=short --junitxml=report.xml
+        continue-on-error: true
+
+      - name: Grade the result
+        if: always()
+        shell: bash
+        run: |
+          uv run python - <<'EOF'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("report.xml").getroot()
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+          failures = int(suite.get("failures", 0)) + int(suite.get("errors", 0))
+          bad = []
+          for tc in root.iter("testcase"):
+              for kind in ("failure", "error"):
+                  for f in tc.findall(kind):
+                      text = " ".join(
+                          x for x in (f.get("message"), (f.text or "")[:5000]) if x
+                      )
+                      if "NotImplementedError" not in text:
+                          bad.append(f"{tc.get('classname')}::{tc.get('name')} ({kind})")
+          if bad:
+              print("::error::tests failed for reasons other than NotImplementedError")
+              for b in bad:
+                  print("  " + b)
+              sys.exit(1)
+          if failures == 0:
+              print("all tests passed")
+          else:
+              print(f"student skeleton: {failures} NotImplementedError failure(s) tolerated")
+          EOF
