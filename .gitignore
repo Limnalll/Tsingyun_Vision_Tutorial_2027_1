@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# the book and the instructor's screenshot slides are not distributed
+*.pdf
+pictures/
+
+# local notes / extraction scratch
+.book_extract/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# generated outputs
+results/
