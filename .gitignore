@@ -40,3 +40,4 @@ venv/
 *.log
 
 uv.lock
+/data
